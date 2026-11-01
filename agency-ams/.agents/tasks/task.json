@@ -1,0 +1,7 @@
+{
+  "task_id": "task-connect-agency-ams-phase1",
+  "task_description": "Build Phase 1 of Connect Digitals Agency Management System — a standalone React 18 + Vite 5 + TypeScript + Tailwind CSS 3 + Supabase SPA scaffolded inside agency-ams/. Covers project scaffold, auth, dashboard, client management, and project management with SQL migrations.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
