@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { Pencil, FolderPlus, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ProjectModal from '../components/ProjectModal';
+import StatusBadge from '../components/StatusBadge';
 import type { Client, Project, ProjectStatus } from '../types';
 
-// Supabase joined query returns clients as an object (or null), not an array
+// Supabase joined query returns agency_clients as an object (or null), not an array
 interface ProjectRow extends Omit<Project, 'client'> {
-  clients: { name: string } | null;
+  agency_clients: { name: string } | null;
 }
 
 const STATUS_FILTERS: Array<'All' | ProjectStatus> = [
@@ -16,20 +17,6 @@ const STATUS_FILTERS: Array<'All' | ProjectStatus> = [
   'Completed',
   'On Hold',
 ];
-
-function StatusBadge({ status }: { status: ProjectStatus }) {
-  const styles: Record<ProjectStatus, string> = {
-    Pending: 'bg-yellow-100 text-yellow-800',
-    'In Progress': 'bg-blue-100 text-blue-800',
-    Completed: 'bg-green-100 text-green-800',
-    'On Hold': 'bg-gray-100 text-gray-600',
-  };
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
-      {status}
-    </span>
-  );
-}
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
@@ -49,11 +36,11 @@ export default function ProjectsPage() {
       try {
         const [projectsRes, clientsRes] = await Promise.all([
           supabase
-            .from('projects')
-            .select('*, clients(name)')
+            .from('agency_projects')
+            .select('*, agency_clients(name)')
             .order('created_at', { ascending: false }),
           supabase
-            .from('clients')
+            .from('agency_clients')
             .select('*')
             .eq('is_archived', false)
             .order('name'),
@@ -84,8 +71,8 @@ export default function ProjectsPage() {
   };
 
   const openEdit = (row: ProjectRow) => {
-    // Convert ProjectRow → Project (drop the joined clients field)
-    const { clients: _joined, ...rest } = row;
+    // Convert ProjectRow → Project (drop the joined agency_clients field)
+    const { agency_clients: _joined, ...rest } = row;
     setEditingProject(rest as Project);
     setModalOpen(true);
   };
@@ -93,7 +80,7 @@ export default function ProjectsPage() {
   const handleSaved = (saved: Project) => {
     // Re-fetch the client name for the saved project
     const clientName = clients.find((c) => c.id === saved.client_id)?.name ?? null;
-    const savedRow: ProjectRow = { ...saved, clients: clientName ? { name: clientName } : null };
+    const savedRow: ProjectRow = { ...saved, agency_clients: clientName ? { name: clientName } : null };
 
     setProjects((prev) => {
       const exists = prev.findIndex((p) => p.id === saved.id);
@@ -184,7 +171,7 @@ export default function ProjectsPage() {
                 {filtered.map((row) => (
                   <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3 font-medium text-dark">{row.title}</td>
-                    <td className="px-5 py-3 text-gray-600">{row.clients?.name ?? '—'}</td>
+                    <td className="px-5 py-3 text-gray-600">{row.agency_clients?.name ?? '—'}</td>
                     <td className="px-5 py-3 text-gray-600">{row.service || '—'}</td>
                     <td className="px-5 py-3">
                       <StatusBadge status={row.status} />

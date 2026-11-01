@@ -7,6 +7,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/clients': 'Clients',
   '/projects': 'Projects',
+  '/proposals': 'Proposals',
+  '/proposals/new': 'New Proposal',
 };
 
 export default function Layout() {
@@ -20,7 +22,9 @@ export default function Layout() {
 
       {/* Main area — offset by desktop sidebar width */}
       <div className="flex flex-col flex-1 md:ml-16 overflow-hidden">
-        <Header title={title} onMenuToggle={() => setSidebarOpen(true)} />
+        <div className="no-print">
+          <Header title={title} onMenuToggle={() => setSidebarOpen(true)} />
+        </div>
 
         <main className="flex-1 overflow-y-auto bg-cream p-6">
           <Outlet />

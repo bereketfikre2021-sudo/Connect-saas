@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Users, Briefcase, CheckCircle, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import StatusBadge from '../components/StatusBadge';
 import type { ProjectStatus } from '../types';
 
 interface Stats {
@@ -14,21 +15,7 @@ interface RecentProject {
   title: string;
   status: ProjectStatus;
   deadline: string | null;
-  clients: { name: string } | null;
-}
-
-function StatusBadge({ status }: { status: ProjectStatus }) {
-  const styles: Record<ProjectStatus, string> = {
-    Pending: 'bg-yellow-100 text-yellow-800',
-    'In Progress': 'bg-blue-100 text-blue-800',
-    Completed: 'bg-green-100 text-green-800',
-    'On Hold': 'bg-gray-100 text-gray-600',
-  };
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
-      {status}
-    </span>
-  );
+  agency_clients: { name: string } | null;
 }
 
 function StatCardSkeleton() {
@@ -53,21 +40,21 @@ export default function DashboardPage() {
       try {
         const countProjects = (status: string) =>
           supabase
-            .from('projects')
+            .from('agency_projects')
             .select('id', { count: 'exact', head: true })
             .eq('status', status);
 
         const [clientsRes, activeRes, completedRes, pendingRes, recentRes] = await Promise.all([
           supabase
-            .from('clients')
+            .from('agency_clients')
             .select('id', { count: 'exact', head: true })
             .eq('is_archived', false),
           countProjects('In Progress'),
           countProjects('Completed'),
           countProjects('Pending'),
           supabase
-            .from('projects')
-            .select('title, status, deadline, clients(name)')
+            .from('agency_projects')
+            .select('title, status, deadline, agency_clients(name)')
             .order('created_at', { ascending: false })
             .limit(5),
         ]);
@@ -186,7 +173,7 @@ export default function DashboardPage() {
                 {recentProjects.map((p, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3 font-medium text-dark">{p.title}</td>
-                    <td className="px-5 py-3 text-gray-600">{p.clients?.name ?? '—'}</td>
+                    <td className="px-5 py-3 text-gray-600">{p.agency_clients?.name ?? '—'}</td>
                     <td className="px-5 py-3">
                       <StatusBadge status={p.status} />
                     </td>

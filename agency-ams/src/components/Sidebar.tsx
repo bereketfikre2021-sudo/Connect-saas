@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Briefcase, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, LogOut, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/clients', label: 'Clients', icon: Users, end: false },
   { to: '/projects', label: 'Projects', icon: Briefcase, end: false },
+  { to: '/proposals', label: 'Proposals', icon: FileText, end: false },
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -37,6 +38,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           'md:w-16 md:hover:w-60 group',
           // Mobile: off-screen by default, slides in when isOpen
           isOpen ? 'w-60' : 'w-0 md:w-16',
+          'no-print',
         ].join(' ')}
       >
         {/* Mobile close button */}
