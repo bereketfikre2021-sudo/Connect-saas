@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-P2-003",
+  "type": "feat",
+  "description": "Client Portal page: public token-gated page at /portal/:token. No auth required. Calls only supabase.rpc('get_portal_data') and supabase.rpc('submit_proposal_response'). Depends on FEAT-P2-001 (types) and FEAT-P2-002 (App.tsx route already added). This feature is independent of FEAT-P2-002 in terms of files touched — it only creates one new file — but it depends on FEAT-P2-002 having added the /portal/:token route to App.tsx.",
+  "status": "completed",
+  "steps": [
+    "Create src/pages/ClientPortalPage.tsx. This is a fully public page — no ProtectedRoute, no useAuth. It has its own full-page layout (does not use the admin Layout). Structure: full-screen flex-col, navy header bar with 'Connect Digitals' wordmark in gold, cream body area. State: loading (boolean), error (string|null), data (the JSONB result from get_portal_data, typed as PortalData interface defined in this file), activeTab ('proposal'|'contract'|'project'), submitting (boolean), submitError (string|null), submitSuccess (boolean), selectedAction (ProposalResponseAction|null), comment (string).",
+    "Define local interface PortalData inside ClientPortalPage.tsx (not in types/index.ts — it's portal-specific and matches the RPC return shape): { proposal: { id: string; title: string; introduction?: string; deliverables?: string; terms?: string; items: ProposalItem[]; total_amount: number; currency: string; expiry_date?: string; status: ProposalStatus; }; client: { name: string; company: string; email: string; }; response?: { action: ProposalResponseAction; comment?: string; responded_at: string; }; contract?: { id: string; content: ContractContent; }; project?: { title: string; status: string; description?: string; start_date?: string; deadline?: string; }; }. Import ProposalItem, ProposalStatus, ProposalResponseAction, ContractContent from ../types.",
+    "On mount: call supabase.rpc('get_portal_data', { p_token: token }) where token = useParams<{token:string}>().token. If result.data is null or result.error is set, set error state to 'This proposal link is invalid, expired, or no longer available.' Render a branded error screen: navy header, cream body, large message centered, Connect Digitals branding.",
+    "Main portal layout (when data loaded successfully): (a) Header bar: navy background, 'Connect Digitals' in gold font-bold, subtitle 'Client Proposal Portal' in cream/70. (b) Tab bar (shown only if contract or project data exists): 'Proposal' tab always shown; 'Contract' tab shown if data.contract exists; 'Project' tab shown if data.project exists. Active tab: border-b-2 border-gold text-dark, inactive: text-gray-500 hover:text-dark. (c) Body: cream background, max-w-3xl mx-auto px-4 py-8.",
+    "Proposal tab content: (1) Proposal title as h1. (2) Client greeting: 'Prepared for: {client.name}' + company. (3) Introduction text if present. (4) Items table: Description, Qty, Unit Price, Subtotal — columns, read-only, same table style as admin pages but without edit actions. (5) Total row in ETB (Intl.NumberFormat). (6) Deliverables section if present. (7) Terms section if present. (8) Expiry date if present. (9) Status section at bottom.",
+    "Action section (shown only when proposal.status === 'Sent' and no existing response): Three buttons side by side: Accept (bg-green-600 text-white), Request Changes (bg-yellow-500 text-white), Reject (border border-red-500 text-red-600 bg-white). Comment textarea below (placeholder: 'Optional: add a comment or message...'). Submit button (bg-brand_red text-cream) enabled only when an action is selected. On submit: call supabase.rpc('submit_proposal_response', { p_token: token, p_action: selectedAction, p_comment: comment }). If RPC returns { error: '...' }, set submitError. If success, re-fetch portal data (call the RPC again to get fresh state) and set submitSuccess=true.",
+    "If response already exists (data.response is set): show a response-received panel instead of action buttons. Show the action (colored badge), comment if any, and timestamp. Text: 'Your response has been recorded.'",
+    "Contract tab content (shown only if data.contract exists): Display the contract content (data.contract.content as ContractContent). Show: client details, services table, total, deliverables, terms. No Print button on the portal (client prints via browser). Simple clean layout.",
+    "Project tab content (shown only if data.project exists): Show project card: title, status badge, description, start date, deadline. Use a simple card layout with navy accent. Do NOT expose any internal admin notes or other clients' data.",
+    "Error states: (a) Token not found / null response: centered branded error. (b) submitError: inline red error below submit button. (c) Network error on mount: same branded error as token not found. (d) Loading: centered spinner on cream background below the nav header."
+  ],
+  "acceptance_criteria": [
+    "src/pages/ClientPortalPage.tsx exists",
+    "The page uses only supabase.rpc calls — no direct .from() table queries",
+    "The page renders without login/auth and does not use useAuth or ProtectedRoute",
+    "Accept/Request Changes/Reject buttons only appear when proposal.status === 'Sent' and no existing response",
+    "Invalid/null token renders a graceful error screen with Connect Digitals branding",
+    "Contract tab only renders if data.contract is present",
+    "Project tab only renders if data.project is present",
+    "npm run build exits 0 with zero TypeScript errors"
+  ],
+  "verification": [
+    "npm run build — from c:\\Users\\BK\\Documents\\Connect-saas\\agency-ams\\ — must exit 0 with zero TypeScript errors and produce dist/"
+  ],
+  "blocked_reason": null,
+  "findings": "Implemented. PortalData interface defined locally in ClientPortalPage.tsx. All RPC calls use supabase.rpc only (no direct .from() queries). fetchPortalData extracted to allow re-fetch after submit. submitSuccess flag set after re-fetch. No auth/ProtectedRoute used. Build exit 0, zero TS errors."
+}
