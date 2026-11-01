@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, Briefcase, CheckCircle, Clock } from 'lucide-react';
+import { Users, Briefcase, CheckCircle, Clock, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import StatusBadge from '../components/StatusBadge';
 import type { ProjectStatus } from '../types';
@@ -9,6 +9,7 @@ interface Stats {
   activeProjects: number;
   completedProjects: number;
   pendingProjects: number;
+  awaitingResponse: number;
 }
 
 interface RecentProject {
@@ -44,7 +45,7 @@ export default function DashboardPage() {
             .select('id', { count: 'exact', head: true })
             .eq('status', status);
 
-        const [clientsRes, activeRes, completedRes, pendingRes, recentRes] = await Promise.all([
+        const [clientsRes, activeRes, completedRes, pendingRes, recentRes, awaitingRes] = await Promise.all([
           supabase
             .from('agency_clients')
             .select('id', { count: 'exact', head: true })
@@ -57,12 +58,16 @@ export default function DashboardPage() {
             .select('title, status, deadline, agency_clients(name)')
             .order('created_at', { ascending: false })
             .limit(5),
+          supabase
+            .from('agency_proposals')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'Sent'),
         ]);
 
         if (cancelled) return;
 
         // Check for errors
-        const errs = [clientsRes, activeRes, completedRes, pendingRes, recentRes]
+        const errs = [clientsRes, activeRes, completedRes, pendingRes, recentRes, awaitingRes]
           .map((r) => r.error)
           .filter(Boolean);
         if (errs.length > 0) throw new Error(errs[0]!.message);
@@ -72,6 +77,7 @@ export default function DashboardPage() {
           activeProjects: activeRes.count ?? 0,
           completedProjects: completedRes.count ?? 0,
           pendingProjects: pendingRes.count ?? 0,
+          awaitingResponse: awaitingRes.count ?? 0,
         });
 
         const rows = (recentRes.data ?? []) as unknown as RecentProject[];
@@ -114,6 +120,12 @@ export default function DashboardPage() {
       icon: <CheckCircle size={22} className="text-green-500" />,
       accent: 'border-green-500',
     },
+    {
+      label: 'Awaiting Response',
+      value: stats?.awaitingResponse ?? 0,
+      icon: <FileText size={22} className="text-navy" />,
+      accent: 'border-navy',
+    },
   ];
 
   return (
@@ -127,9 +139,9 @@ export default function DashboardPage() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {loading
-          ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          ? Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)
           : statCards.map((card) => (
               <div
                 key={card.label}
