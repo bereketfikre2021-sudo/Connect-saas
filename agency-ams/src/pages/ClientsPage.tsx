@@ -65,6 +65,9 @@ export default function ClientsPage() {
   };
 
   const handleArchive = async (id: string) => {
+    if (!window.confirm('Archive this client? They will no longer appear in the active client list.')) {
+      return;
+    }
     try {
       const { error: sbError } = await supabase
         .from('clients')
