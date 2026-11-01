@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Scaffold the project: create all config files, install dependencies, and confirm a clean build. This feature produces no app UI — it establishes the toolchain so FEAT-002 and FEAT-003 can build on a working base. FEAT-002 and FEAT-003 depend on this feature completing first.",
+  "status": "completed",
+  "steps": [
+    "Create directory c:\\Users\\BK\\Documents\\Connect-saas\\agency-ams\\ (the project root). All files in this feature live there.",
+    "Create package.json with name 'agency-ams', version '1.0.0', type 'module'. Scripts: dev='vite', build='tsc && vite build', preview='vite preview'. Dependencies (exact versions): react@18.3.1, react-dom@18.3.1, react-router-dom@6.30.6, @supabase/supabase-js@2.118.0, lucide-react@0.511.0. devDependencies: typescript@5.7.2, vite@5.4.21, @vitejs/plugin-react@4.7.0, tailwindcss@3.4.19, postcss@8.5.3, autoprefixer@10.4.21, @types/react@18.3.23, @types/react-dom@18.3.7. Note: lucide-react provides icons used in Sidebar and Header; no other icon library needed.",
+    "Create index.html at project root. Standard Vite HTML shell: lang='en', charset UTF-8, viewport meta, title 'Connect Digitals — Agency AMS', script type='module' src='/src/main.tsx'.",
+    "Create vite.config.ts: import { defineConfig } from 'vite'; import react from '@vitejs/plugin-react'; export default defineConfig({ plugins: [react()], server: { port: 5173 } });",
+    "Create tsconfig.json: compilerOptions target='ES2020', useDefineForClassFields=true, lib=['ES2020','DOM','DOM.Iterable'], module='ESNext', skipLibCheck=true, moduleResolution='bundler', allowImportingTsExtensions=true, resolveJsonModule=true, isolatedModules=true, noEmit=true, jsx='react-jsx', strict=true, noUnusedLocals=true, noUnusedParameters=true, noFallthroughCasesInSwitch=true. include=['src'].",
+    "Create tailwind.config.js: content=['./index.html','./src/**/*.{ts,tsx}']. theme.extend.colors: navy='#000F33', brand_red='#EC1C24', gold='#D4AF37', cream='#F8F4EF', dark='#222222'. (Use 'brand_red' not 'red' to avoid overriding Tailwind's built-in red palette.) fontFamily.sans=['Inter','system-ui','sans-serif'].",
+    "Create postcss.config.js: export default { plugins: { tailwindcss: {}, autoprefixer: {} } };",
+    "Create .env.example: VITE_SUPABASE_URL=https://your-project.supabase.co\\nVITE_SUPABASE_ANON_KEY=your-anon-key-here\\n# Never add service-role key here.",
+    "Create .gitignore: node_modules/, dist/, .env, .env.local, .DS_Store, *.log.",
+    "Run `npm install` inside agency-ams/ to install all dependencies.",
+    "Create a minimal src/main.tsx (just ReactDOM.createRoot render of a <div>Loading...</div>) and src/index.css (just @tailwind base/components/utilities) so the build has entry points.",
+    "Run `npm run build` inside agency-ams/ to confirm the scaffold compiles. Fix any errors before marking complete."
+  ],
+  "acceptance_criteria": [
+    "agency-ams/node_modules/ exists and contains react, vite, tailwindcss, @supabase/supabase-js, lucide-react",
+    "Running `npm run build` inside agency-ams/ exits with code 0 and produces agency-ams/dist/index.html",
+    "No TypeScript errors during build",
+    "package.json lists all dependencies at the exact pinned versions specified"
+  ],
+  "verification": [
+    "cd c:\\Users\\BK\\Documents\\Connect-saas\\agency-ams && npm run build — must exit 0"
+  ],
+  "blocked_reason": null,
+  "findings": "All pinned versions installed exactly as specified. Actual versions confirmed via npm list: react@18.3.1, react-dom@18.3.1, react-router-dom@6.30.6, @supabase/supabase-js@2.118.0, lucide-react@0.511.0, typescript@5.7.2, vite@5.4.21, @vitejs/plugin-react@4.7.0, tailwindcss@3.4.19, postcss@8.5.3, autoprefixer@10.4.21. Build produced dist/index.html (0.41 kB) + dist/assets/index-*.css (4.69 kB) + dist/assets/index-*.js (142.62 kB). No TypeScript errors. npm audit reported 5 vulnerabilities (3 moderate, 2 high) in transitive dependencies — none are in direct project dependencies; no action taken per project policy. Tailwind emitted a warning about no utility classes detected, which is expected for the minimal stub src/main.tsx; this will resolve in FEAT-002/003 when real UI components are added."
+}
