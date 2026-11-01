@@ -1,0 +1,7 @@
+{
+  "task_id": "task-agency-ams-phase2",
+  "task_description": "Build Phase 2 of Connect Digitals Agency AMS: Proposals (list/editor/detail), Contracts (printable), Client Portal (public token-gated), Dashboard 5th stat, Sidebar Proposals nav, StatusBadge extraction, SQL migrations (003-006), TypeScript types, routing, and print CSS.",
+  "status": "pending",
+  "feature_order": ["FEAT-P2-001", "FEAT-P2-002", "FEAT-P2-003"],
+  "blocked_reason": null
+}

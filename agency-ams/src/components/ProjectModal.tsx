@@ -85,7 +85,7 @@ export default function ProjectModal({ isOpen, onClose, project, clients, onSave
     try {
       if (project?.id) {
         const { data, error: sbError } = await supabase
-          .from('projects')
+          .from('agency_projects')
           .update(payload)
           .eq('id', project.id)
           .select()
@@ -95,7 +95,7 @@ export default function ProjectModal({ isOpen, onClose, project, clients, onSave
         onSaved(data as Project);
       } else {
         const { data, error: sbError } = await supabase
-          .from('projects')
+          .from('agency_projects')
           .insert(payload)
           .select()
           .single();

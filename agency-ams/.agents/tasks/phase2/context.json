@@ -1,0 +1,32 @@
+{
+  "project_type": "Standalone React SPA — React 18 + Vite 5 + TypeScript strict + Tailwind CSS 3 + Supabase (anon key only in client)",
+  "language": "TypeScript (strict: noUnusedLocals, noUnusedParameters, noFallthroughCasesInSwitch — every import and parameter must be used)",
+  "build_system": "Vite 5.4.21 with @vitejs/plugin-react. Single package.json at agency-ams/. Build: `npm run build` = tsc + vite build. No monorepo.",
+  "test_framework": "None. Verification is `npm run build` — must exit 0 with zero TypeScript errors.",
+  "build_command": "npm run build",
+  "test_command": "npm run build",
+  "verification_instructions": "1. Set cwd to c:\\Users\\BK\\Documents\\Connect-saas\\agency-ams\\  2. Run: npm run build  3. Must exit 0, no TS errors, dist/ produced.",
+  "snapshot_or_generated_files": "dist/ is build output (not committed). node_modules/ not committed. .env.local not committed.",
+  "environment_constraints": "Windows PowerShell — use semicolons (;) NOT && for command chaining in PowerShell. Node 24.11.0, npm 11.6.1. Worktree root: c:\\Users\\BK\\Documents\\Connect-saas\\agency-ams\\. NEVER write files outside this directory. .env.local exists with real Supabase credentials but must never be read or echoed.",
+  "contribution_requirements": "All new tables: agency_ prefix, RLS enabled, admin-only policies using UUID 9705a671-4d69-49bb-b5f9-7f69cad4f0f8. Public portal access only via security-definer RPCs — never direct table access from anon role. Never hardcode Supabase URL (use import.meta.env.VITE_SUPABASE_URL). Never expose service-role key. Do NOT execute SQL. Do NOT modify Phase 1 migrations. Do NOT touch files outside agency-ams/.",
+  "key_patterns": "All components: functional React + TypeScript prop interfaces. Tailwind only — no custom CSS except src/index.css. Brand tokens in tailwind.config.js: navy=#000F33, brand_red=#EC1C24, gold=#D4AF37, cream=#F8F4EF, dark=#222222. Supabase singleton: src/lib/supabase.ts — all pages import { supabase } from '../lib/supabase'. Page loading pattern: useState(true) for loading, useState(null) for error, cleanup with cancelled flag, useEffect. Modal pattern: fixed overlay, controlled boolean + onClose. Status filter pills: 'All' + status values, active pill = bg-navy text-cream. Table pattern: bg-white rounded-xl shadow overflow-hidden, thead bg-gray-50, divide-y divide-gray-100. Button primary: bg-brand_red text-cream hover:bg-red-700. Button secondary: border border-gray-300 text-dark hover:bg-gray-50. Input class: border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-navy. Error display: text-brand_red bg-red-50 border border-red-200 rounded px-3 py-2.",
+  "relevant_files": [
+    "src/App.tsx",
+    "src/index.css",
+    "src/types/index.ts",
+    "src/lib/supabase.ts",
+    "src/components/Sidebar.tsx",
+    "src/components/Layout.tsx",
+    "src/components/Header.tsx",
+    "src/components/ProtectedRoute.tsx",
+    "src/pages/DashboardPage.tsx",
+    "src/pages/ProjectsPage.tsx",
+    "src/pages/ClientsPage.tsx",
+    "src/db/migrations/001_create_agency_clients.sql",
+    "src/db/migrations/002_create_agency_projects.sql"
+  ],
+  "directory_structure": "agency-ams/ — project root (package.json, vite.config.ts, tsconfig.json, tailwind.config.js) | src/ — all app source | src/lib/ — supabase singleton | src/types/ — shared TS interfaces | src/context/ — AuthContext | src/components/ — reusable UI | src/pages/ — route-level pages | src/db/migrations/ — SQL files (not executed by build) | .agents/tasks/phase2/ — planning artifacts (never in src/)",
+  "admin_uuid": "9705a671-4d69-49bb-b5f9-7f69cad4f0f8",
+  "phase1_admin_uuid_note": "Phase 1 migrations 001 and 002 used 8662a535-fa9b-4e26-8c5d-193992607121. Phase 2 uses 9705a671-4d69-49bb-b5f9-7f69cad4f0f8. Do NOT change Phase 1 migrations.",
+  "existing_statusbadge_note": "DashboardPage.tsx and ProjectsPage.tsx each have their own inline StatusBadge function. Both must be removed and replaced with import of src/components/StatusBadge.tsx."
+}

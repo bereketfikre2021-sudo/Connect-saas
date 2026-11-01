@@ -1,216 +1,214 @@
-# Implementation Plan — Connect Digitals Agency AMS (Phase 1)
+# Implementation Plan — Phase 2: Connect Digitals Agency AMS
 
-## Context & Decisions
-
-**Workspace confirmed clean:** `c:\Users\BK\Documents\Connect-saas\` contains only a bare `.git` directory. No existing source files will be touched.
-
-**Stack decisions:**
-- **React 18.3.1** over React 19 — React 19 is latest but too new for the ecosystem; all Supabase, router, and type packages are tested against React 18. This is the safe production choice.
-- **Vite 5.4.21** over Vite 6/8 — Vite 5 has stable peer-dep compatibility with `@vitejs/plugin-react@4` and Tailwind 3. Vite 6 introduced breaking changes; Vite 8 requires extra config. Vite 5 just works.
-- **Tailwind CSS 3.4.19** over Tailwind 4 — Tailwind 4 completely changed the config format (no more `tailwind.config.js`). The task specifies `tailwind.config.js` explicitly, so Tailwind 3 is the correct choice.
-- **react-router-dom 6.30.6** — stable v6 API with `<Routes>`, `<Route>`, `<Outlet>`, `<NavLink>`, `<Navigate>`. No TanStack Router or v7 complications.
-- **@supabase/supabase-js 2.118.0** — latest v2 stable. No v3 edge cases.
-- **lucide-react 0.511.0** — lightweight icon library; only one used, no heavy deps. Used in Sidebar and Header.
-- **No shadcn/ui, no Radix, no Headless UI** — task says avoid overengineering. All UI is Tailwind utility classes only.
-- **Color token `brand_red`** (not `red`) in tailwind.config.js to avoid overriding Tailwind's built-in red scale.
-- **Modal pattern**: fixed overlay div (no React portal, no external library) — simpler and sufficient for this admin app.
-- **Auth pattern**: Supabase email+password only. No magic links, no OAuth. Admin-only — no signup flow in the UI.
+> Admin UUID used throughout: `9705a671-4d69-49bb-b5f9-7f69cad4f0f8`
+> Build command: `npm run build` (tsc + vite build) — must exit 0.
+> All files are inside `c:\Users\BK\Documents\Connect-saas\agency-ams\`.
 
 ---
 
-## Plan
+## Ordering constraints
 
-- [ ] 1. **Create project scaffold — config files and dependencies**
-      Create the `agency-ams/` project root with all config and tooling files. This establishes the build system so every subsequent step has a working compiler.
-      Files to create:
-      - `agency-ams/package.json` — name: agency-ams, scripts: dev/build/preview, all dependencies at exact pinned versions (react@18.3.1, react-dom@18.3.1, react-router-dom@6.30.6, @supabase/supabase-js@2.118.0, lucide-react@0.511.0, typescript@5.7.2, vite@5.4.21, @vitejs/plugin-react@4.7.0, tailwindcss@3.4.19, postcss@8.5.3, autoprefixer@10.4.21, @types/react@18.3.23, @types/react-dom@18.3.7)
-      - `agency-ams/index.html` — Vite HTML shell, title "Connect Digitals — Agency AMS", script src="/src/main.tsx"
-      - `agency-ams/vite.config.ts` — defineConfig with react() plugin, server port 5173
-      - `agency-ams/tsconfig.json` — strict, target ES2020, moduleResolution bundler, jsx react-jsx, noEmit true
-      - `agency-ams/tailwind.config.js` — content glob for src/, extend colors (navy, brand_red, gold, cream, dark), fontFamily Inter
-      - `agency-ams/postcss.config.js` — tailwindcss + autoprefixer plugins
-      - `agency-ams/.env.example` — VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY placeholders with comment about service-role key
-      - `agency-ams/.gitignore` — node_modules/, dist/, .env, .env.local, .DS_Store, *.log
-
-      Then run `npm install` inside `agency-ams/`.
-      Verify: `cd agency-ams && npm install` completes without errors; `node_modules/` is populated.
-
-- [ ] 2. **Create entry point stubs to enable build verification**
-      Create minimal source files so `npm run build` has valid entry points before any real app code is written.
-      Files to create:
-      - `agency-ams/src/index.css` — Google Fonts Inter import + three Tailwind directives (@tailwind base/components/utilities)
-      - `agency-ams/src/main.tsx` — ReactDOM.createRoot render of `<React.StrictMode><div>Loading...</div></React.StrictMode>`
-
-      Verify: `cd agency-ams && npm run build` exits 0 and produces `dist/index.html`.
-
-- [ ] 3. **Create TypeScript types and Supabase client singleton**
-      These two files are imported by every other source file; create them before any component.
-      Files to create:
-      - `agency-ams/src/types/index.ts` — export interfaces: `Client` (id, name, company, email, phone, location, notes?, is_archived, created_at, updated_at), `Project` (id, client_id, title, description?, service, budget?, start_date?, deadline?, status, created_at, updated_at), type alias `ProjectStatus = 'Pending' | 'In Progress' | 'Completed' | 'On Hold'`.
-      - `agency-ams/src/lib/supabase.ts` — createClient singleton reading VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from import.meta.env; throws a descriptive Error if either is missing. Never imports or uses the service-role key.
-
-      Verify: `npm run build` still exits 0 (no TS errors in the new files).
-
-- [ ] 4. **Create AuthContext, ProtectedRoute, and stub pages for routing**
-      Establish auth state management and a working router structure so all remaining UI can be built inside the correct context.
-      Files to create:
-      - `agency-ams/src/context/AuthContext.tsx` — AuthContextType interface (user, loading, signIn, signOut); AuthProvider uses useState+useEffect; getSession on mount; onAuthStateChange subscription with cleanup; signIn calls signInWithPassword; signOut calls supabase.auth.signOut. Export `useAuth` hook that throws if used outside provider.
-      - `agency-ams/src/components/ProtectedRoute.tsx` — reads useAuth(); shows spinner on loading; redirects to /login if no user; renders `<Outlet />` if authenticated.
-      - `agency-ams/src/pages/DashboardPage.tsx` — stub: `export default function DashboardPage() { return <div className="p-6 text-dark">Dashboard</div>; }`
-      - `agency-ams/src/pages/ClientsPage.tsx` — stub: `export default function ClientsPage() { return <div className="p-6 text-dark">Clients</div>; }`
-      - `agency-ams/src/pages/ProjectsPage.tsx` — stub: `export default function ProjectsPage() { return <div className="p-6 text-dark">Projects</div>; }`
-      - `agency-ams/src/App.tsx` — BrowserRouter > AuthProvider > Routes: `/login` → LoginPage (stub), `/` → ProtectedRoute > Layout > [index→Dashboard, clients→Clients, projects→Projects]. Import Layout as stub for now.
-      - `agency-ams/src/pages/LoginPage.tsx` — stub for now (just returns `<div>Login</div>`)
-      - `agency-ams/src/components/Layout.tsx` — stub: just renders `<Outlet />`
-      - Update `agency-ams/src/main.tsx` — render `<App />` wrapped in `<React.StrictMode>`.
-
-      Verify: `npm run build` exits 0.
-
-- [ ] 5. **Create layout shell components: Sidebar, Header, Layout**
-      Build the responsive navigation shell. These components wrap all authenticated pages.
-      Files to modify/create:
-      - `agency-ams/src/components/Sidebar.tsx` — Props: `isOpen: boolean; onClose: () => void`. Desktop: fixed left bar, collapses to 64px (icon-only) and expands to 240px on group hover via Tailwind transition. Background: `bg-navy`. Logo: 'CD' monogram gold collapsed, 'Connect Digitals' expanded. NavLinks (react-router-dom NavLink): Dashboard (`/`, LayoutDashboard icon), Clients (`/clients`, Users icon), Projects (`/projects`, Briefcase icon). Active link: gold left border + bg-white/5. Bottom: sign-out button (LogOut icon). Mobile: absolute overlay panel that slides in when `isOpen=true`, close on backdrop click calls `onClose`. All icons from lucide-react.
-      - `agency-ams/src/components/Header.tsx` — Props: `onMenuToggle: () => void; title: string`. Renders only on mobile (hidden md:hidden class on wrapper). Hamburger `Menu` icon left, page title center, bg-navy text-cream.
-      - `agency-ams/src/components/Layout.tsx` (replace stub) — useState for `sidebarOpen`. Renders: Header (mobile), Sidebar, `<main>` with `bg-cream min-h-screen`. On mobile when sidebarOpen, renders a fixed dark overlay that closes sidebar. The `<main>` has `md:ml-16` margin to accommodate collapsed sidebar.
-
-      Verify: `npm run build` exits 0.
-
-- [ ] 6. **Create LoginPage (full implementation)**
-      Replace the LoginPage stub with the real implementation.
-      File to modify:
-      - `agency-ams/src/pages/LoginPage.tsx` — Full-screen navy background. Centered white card (max-w-sm, rounded-xl, shadow-xl, p-8). Top: "Connect Digitals" heading (gold) + "Agency Management" subheading (cream). Email input + Password input (both required, show validation error if submitted empty). Submit button: bg-brand_red text-white w-full rounded-lg py-3 font-semibold. On submit: call signIn(email, password); if throws, show error message inline below button. After success, navigate('/') using useNavigate. If user is already logged in (check useAuth), redirect to '/' immediately.
-
-      Verify: `npm run build` exits 0.
-
-- [ ] 7. **Create ClientModal component**
-      Reusable modal for creating and editing clients.
-      File to create:
-      - `agency-ams/src/components/ClientModal.tsx` — Props: `isOpen: boolean; onClose: () => void; client?: Client; onSaved: (client: Client) => void`. Fixed overlay (inset-0, bg-black/50, z-50) with centered card (bg-white, max-w-lg, rounded-xl, p-6). Form fields: Name (required), Company, Email, Phone, Location, Notes (textarea). On submit: if `client?.id` → `supabase.from('clients').update({name,company,email,phone,location,notes}).eq('id',client.id).select().single()`; else → `.insert({...}).select().single()`. On success: call `onSaved(data)` then `onClose()`. On error: show inline error message. Cancel button calls onClose. Close on backdrop click. Submit button: 'Save Client' in bg-navy text-cream.
-
-      Verify: `npm run build` exits 0.
-
-- [ ] 8. **Create ProjectModal component**
-      Reusable modal for creating and editing projects.
-      File to create:
-      - `agency-ams/src/components/ProjectModal.tsx` — Props: `isOpen: boolean; onClose: () => void; project?: Project; clients: Client[]; onSaved: (project: Project) => void`. Same overlay pattern as ClientModal. Form fields: Title (required text), Client (required `<select>` populated from `clients` prop showing client.name, value=client.id), Service (required text), Status (`<select>` with Pending/In Progress/Completed/On Hold options, default Pending), Description (textarea), Budget (number input, min=0, step=0.01), Start Date (date input), Deadline (date input). On submit: insert or update in `projects` table. Same error/success pattern.
-
-      Verify: `npm run build` exits 0.
-
-- [ ] 9. **Implement DashboardPage**
-      Replace the dashboard stub with the full stat overview page.
-      File to modify:
-      - `agency-ams/src/pages/DashboardPage.tsx` — On mount, fetch four counts in parallel with Promise.all: total non-archived clients, active (In Progress) projects, completed projects, pending projects — using `{ count: 'exact', head: true }` select pattern. Show four stat cards in a responsive grid (grid-cols-2 md:grid-cols-4): each card has icon, label, count, and a colored left border (navy/gold/brand_red/green). Below: fetch 5 most-recent projects with client name via `supabase.from('projects').select('title, status, deadline, clients!inner(name)').order('created_at',{ascending:false}).limit(5)`. Render in a white rounded card as a table (desktop) / stacked cards (mobile). Status badge: pill with class based on status value. Show loading skeleton (animated pulse divs) while fetching. Show error state if fetch fails.
-
-      Verify: `npm run build` exits 0.
-
-- [ ] 10. **Implement ClientsPage**
-       Replace the clients stub with the full client management page.
-       File to modify:
-       - `agency-ams/src/pages/ClientsPage.tsx` — Fetch non-archived clients on mount: `supabase.from('clients').select('*').eq('is_archived',false).order('name')`. Local state: `clients: Client[]`, `loading: boolean`, `modalOpen: boolean`, `editingClient: Client | undefined`. Header: page title "Clients" + "Add Client" button (bg-brand_red). Table columns (desktop): Name, Company, Email, Phone, Location, Actions. Mobile: cards. Each row: Edit icon button (PencilLine from lucide) opens modal with client, Archive button (Archive icon) shows a confirmation inline or window.confirm, then calls `supabase.from('clients').update({is_archived:true}).eq('id',id)` and removes from local state. `onSaved` handler: if editingClient was set, replace item in array; else prepend. Empty state: "No active clients. Add your first client." Loading spinner while fetching.
-
-       Verify: `npm run build` exits 0.
-
-- [ ] 11. **Implement ProjectsPage**
-       Replace the projects stub with the full project management page.
-       File to modify:
-       - `agency-ams/src/pages/ProjectsPage.tsx` — Fetch projects with client name and fetch all active clients (for modal) on mount using Promise.all. Local state: `projects`, `clients`, `loading`, `modalOpen`, `editingProject`, `statusFilter: ProjectStatus | 'All'`. Header: "Projects" title + "Add Project" button. Status filter pill bar: "All | Pending | In Progress | Completed | On Hold" — filters displayed list client-side. Table columns (desktop): Title, Client (from joined data), Service, Status badge, Deadline, Budget (formatted as currency), Actions (Edit button). Mobile: stacked cards. `onSaved` handler: prepend or replace. Empty state message.
-
-       Verify: `npm run build` exits 0.
-
-- [ ] 12. **Create SQL migration files**
-       Create the two Supabase migration files. These are SQL-only files; no code changes needed.
-       Files to create:
-       - `agency-ams/src/db/migrations/001_create_clients.sql`:
-         ```sql
-         CREATE TABLE public.clients (
-           id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-           name text NOT NULL,
-           company text NOT NULL DEFAULT '',
-           email text NOT NULL DEFAULT '',
-           phone text NOT NULL DEFAULT '',
-           location text NOT NULL DEFAULT '',
-           notes text,
-           is_archived boolean NOT NULL DEFAULT false,
-           created_at timestamptz NOT NULL DEFAULT now(),
-           updated_at timestamptz NOT NULL DEFAULT now()
-         );
-
-         ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
-
-         CREATE POLICY "Authenticated admins only"
-           ON public.clients FOR ALL
-           TO authenticated
-           USING (true)
-           WITH CHECK (true);
-
-         CREATE OR REPLACE FUNCTION public.handle_updated_at()
-           RETURNS trigger LANGUAGE plpgsql AS $$
-           BEGIN NEW.updated_at = now(); RETURN NEW; END;
-         $$;
-
-         CREATE TRIGGER clients_updated_at
-           BEFORE UPDATE ON public.clients
-           FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
-         ```
-       - `agency-ams/src/db/migrations/002_create_projects.sql`:
-         ```sql
-         CREATE TABLE public.projects (
-           id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-           client_id uuid NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
-           title text NOT NULL,
-           description text,
-           service text NOT NULL DEFAULT '',
-           budget numeric(12,2),
-           start_date date,
-           deadline date,
-           status text NOT NULL DEFAULT 'Pending'
-             CHECK (status IN ('Pending','In Progress','Completed','On Hold')),
-           created_at timestamptz NOT NULL DEFAULT now(),
-           updated_at timestamptz NOT NULL DEFAULT now()
-         );
-
-         CREATE INDEX projects_client_id_idx ON public.projects(client_id);
-         CREATE INDEX projects_status_idx ON public.projects(status);
-
-         ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
-
-         CREATE POLICY "Authenticated admins only"
-           ON public.projects FOR ALL
-           TO authenticated
-           USING (true)
-           WITH CHECK (true);
-
-         CREATE TRIGGER projects_updated_at
-           BEFORE UPDATE ON public.projects
-           FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
-         ```
-
-       Verify: `npm run build` exits 0 (SQL files don't affect TypeScript build but confirm they exist with correct structure for manual Supabase execution).
-
-- [ ] 13. **Final build verification and polish**
-       Run the full build clean and confirm the complete app is production-ready.
-       - Run `npm run build` inside `agency-ams/` — must exit 0 with no TypeScript errors and no Vite warnings about missing modules.
-       - Run `npm run dev` and confirm the dev server starts on port 5173 and the login page renders in the browser.
-       - Confirm no `VITE_SUPABASE_URL` or key values are hardcoded anywhere in `src/` (only `import.meta.env.*` references).
-       - Confirm `.env` is not present (only `.env.example`).
-
-       Verify: `npm run build` exits 0, `dist/index.html` exists, `dist/assets/` contains JS and CSS bundles.
+- [ F ] StatusBadge component must be created before any Phase 2 page imports it.
+- [ H ] TypeScript types must be extended before any Phase 2 page is written.
+- [ G ] SQL migrations are file-only; no execution. No ordering dependency on UI.
+- [ J ] Print CSS has no UI dependencies; can be done any time.
+- [ E ] Sidebar update has no dependency on new pages (nav items use to= paths).
+- [ D ] Dashboard update requires the StatusBadge to already exist (it currently has its own inline copy — after extraction the inline copy is removed).
+- [ A,B,C ] Proposals / Contracts / Portal pages depend on H (types) and F (StatusBadge).
+- [ I ] App.tsx routing update must happen after all new page files exist.
 
 ---
 
-## Environment Variables Required
+## Step-by-step plan
 
-```
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-public-key
-```
+- [ ] 1. **Extract StatusBadge into a reusable component**
+      Create `src/components/StatusBadge.tsx`. The component accepts `status: string` and an optional `colorMap: Record<string, string>` prop. When `colorMap` is omitted it defaults to the ProjectStatus colour set (Pending/In Progress/Completed/On Hold). For proposal statuses a different colour map will be passed by the caller.
+      Remove the inline `StatusBadge` function from `src/pages/DashboardPage.tsx` and `src/pages/ProjectsPage.tsx`. Add `import StatusBadge from '../components/StatusBadge'` to both files.
+      Files: `src/components/StatusBadge.tsx`, `src/pages/DashboardPage.tsx`, `src/pages/ProjectsPage.tsx`
+      Verify: `npm run build` — zero TypeScript errors, build exits 0.
 
-Create a `.env` file in `agency-ams/` with these values. Never commit it.
+- [ ] 2. **Extend TypeScript types**
+      Add to `src/types/index.ts`:
+      - `ProposalStatus = 'Draft' | 'Sent' | 'Accepted' | 'Changes Requested' | 'Rejected'`
+      - `ProposalResponseAction = 'Accepted' | 'Changes Requested' | 'Rejected'`
+      - `ProposalItem` interface: `{ id: string; description: string; quantity: number; unit_price: number; subtotal: number }`
+      - `Proposal` interface: `{ id, client_id, title, introduction?, deliverables?, terms?, items: ProposalItem[], total_amount, currency, expiry_date?, status: ProposalStatus, portal_token, created_at, updated_at, client?: Client }`
+      - `ProposalResponse` interface: `{ id, proposal_id, action: ProposalResponseAction, comment?, responded_at }`
+      - `ContractContent` interface: `{ client_name, client_company, client_email, proposal_title, items: ProposalItem[], total_amount, currency, deliverables?, terms?, issued_at, accepted_at? }`
+      - `Contract` interface: `{ id, proposal_id, client_id, content: ContractContent, status: 'Draft' | 'Active', created_at, updated_at }`
+      Files: `src/types/index.ts`
+      Verify: `npm run build` — zero TypeScript errors.
 
-## Manual Supabase Setup Required
+- [ ] 3. **SQL migration 003 — agency_proposals table**
+      Create `src/db/migrations/003_create_agency_proposals.sql`.
+      Table `agency_proposals`: id uuid PK, client_id uuid FK → agency_clients ON DELETE RESTRICT, title text NOT NULL, introduction text, deliverables text, terms text, items JSONB NOT NULL DEFAULT '[]', total_amount numeric(14,2) NOT NULL DEFAULT 0, currency text NOT NULL DEFAULT 'ETB', expiry_date date, status text NOT NULL DEFAULT 'Draft' CHECK (status IN ('Draft','Sent','Accepted','Changes Requested','Rejected')), portal_token text NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(32),'hex'), created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now().
+      Indexes: on client_id, on status, on portal_token.
+      RLS enabled; four admin-only policies (SELECT/INSERT/UPDATE/DELETE) checking `auth.uid() = '9705a671-4d69-49bb-b5f9-7f69cad4f0f8'::uuid`.
+      Trigger reuses `agency_handle_updated_at()` from migration 001.
+      Files: `src/db/migrations/003_create_agency_proposals.sql`
+      Verify: file created, build still exits 0 (SQL files are not compiled).
 
-1. Create a Supabase project at supabase.com.
-2. In the Supabase SQL editor, run `001_create_clients.sql` then `002_create_projects.sql` in order.
-3. In Supabase Authentication → Settings, disable email confirmations if you want immediate login.
-4. In Supabase Authentication → Users, create your admin user manually (or use the Supabase dashboard invite).
-5. Copy your project URL and anon key from Supabase Settings → API into the `.env` file.
+- [ ] 4. **SQL migration 004 — agency_proposal_responses table**
+      Create `src/db/migrations/004_create_agency_proposal_responses.sql`.
+      Table `agency_proposal_responses`: id uuid PK, proposal_id uuid FK → agency_proposals ON DELETE CASCADE, action text NOT NULL CHECK (action IN ('Accepted','Changes Requested','Rejected')), comment text, responded_at timestamptz NOT NULL DEFAULT now().
+      Unique constraint on proposal_id (one response per proposal — prevents repeated submissions from manipulating proposal status).
+      RLS enabled. No SELECT/INSERT policy for authenticated (admin reads via `get_portal_data` RPC). INSERT for `anon` role is intentionally NOT granted here — only via the security-definer RPC. Admin SELECT only (auth.uid() = admin UUID).
+      Files: `src/db/migrations/004_create_agency_proposal_responses.sql`
+      Verify: file created, build exits 0.
+
+- [ ] 5. **SQL migration 005 — agency_contracts table**
+      Create `src/db/migrations/005_create_agency_contracts.sql`.
+      Table `agency_contracts`: id uuid PK, proposal_id uuid FK → agency_proposals ON DELETE RESTRICT UNIQUE (one contract per proposal), client_id uuid FK → agency_clients ON DELETE RESTRICT, content JSONB NOT NULL, status text NOT NULL DEFAULT 'Draft' CHECK (status IN ('Draft','Active')), created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now().
+      Indexes on client_id, proposal_id.
+      RLS enabled; admin-only policies for SELECT/INSERT/UPDATE/DELETE.
+      Trigger reuses `agency_handle_updated_at()`.
+      Files: `src/db/migrations/005_create_agency_contracts.sql`
+      Verify: file created, build exits 0.
+
+- [ ] 6. **SQL migration 006 — portal RPC functions**
+      Create `src/db/migrations/006_portal_functions.sql`.
+      Two SECURITY DEFINER functions with fixed `search_path = public, pg_temp`:
+
+      **`get_portal_data(p_token text)`** — Returns JSONB of `{ proposal, client (safe fields only: name, company, email), responses, contract (if exists), project (if linked via client_id) }`. Validates token exists AND proposal status != 'Draft'. Returns NULL (not error) if not found/draft. Never returns data from other clients.
+
+      **`submit_proposal_response(p_token text, p_action text, p_comment text)`** — Inserts into `agency_proposal_responses` and updates `agency_proposals.status`. Validates: token exists, status is 'Sent' (not already responded), action is one of the three valid values. Returns error JSON `{ "error": "..." }` on validation failure. Uses `INSERT ... ON CONFLICT DO NOTHING` to be idempotent — but checks for existing response first and returns an error if one already exists (prevents repeated submissions).
+
+      Both functions: `REVOKE EXECUTE ON FUNCTION ... FROM PUBLIC; GRANT EXECUTE ON FUNCTION ... TO anon, authenticated;`
+      Files: `src/db/migrations/006_portal_functions.sql`
+      Verify: file created, build exits 0.
+
+- [ ] 7. **Update Sidebar with Proposals nav item**
+      In `src/components/Sidebar.tsx`, add `FileText` to the lucide-react import. Add `{ to: '/proposals', label: 'Proposals', icon: FileText, end: false }` to `navItems` between Projects and the Sign Out button.
+      Files: `src/components/Sidebar.tsx`
+      Verify: `npm run build` — exits 0.
+
+- [ ] 8. **Update Layout with new page title mappings**
+      In `src/components/Layout.tsx`, add entries to `PAGE_TITLES`: `'/proposals': 'Proposals'`, `'/proposals/new': 'New Proposal'`, `'/contracts': 'Contracts'`. These provide the mobile header title. (Detail and editor pages will have more dynamic titles but this covers the static ones.)
+      Files: `src/components/Layout.tsx`
+      Verify: `npm run build` — exits 0.
+
+- [ ] 9. **Add print CSS to index.css**
+      Append to `src/index.css`:
+      ```css
+      @media print {
+        .no-print { display: none !important; }
+        body { background: white !important; }
+      }
+      ```
+      Files: `src/index.css`
+      Verify: `npm run build` — exits 0.
+
+- [ ] 10. **Create ProposalsPage**
+       Create `src/pages/ProposalsPage.tsx`.
+       Features:
+       - Fetch all proposals from `agency_proposals` with `select('*, agency_clients(name)')`, ordered by `created_at desc`.
+       - Status filter pills: All / Draft / Sent / Accepted / Changes Requested / Rejected (matching ProjectsPage pattern).
+       - "New Proposal" button (top right, `bg-brand_red` style) navigates to `/proposals/new`.
+       - Table columns: Title, Client, Total (ETB, formatted with `Intl.NumberFormat`), Status (uses `StatusBadge` with proposal colour map), Expiry, Created.
+       - Click anywhere on a row navigates to `/proposals/:id` (ProposalDetailPage).
+       - Loading spinner and empty state follow existing patterns.
+       Files: `src/pages/ProposalsPage.tsx`
+       Verify: `npm run build` — exits 0.
+
+- [ ] 11. **Create ProposalEditorPage**
+       Create `src/pages/ProposalEditorPage.tsx`.
+       Features:
+       - Used for both `/proposals/new` and `/proposals/:id/edit`.
+       - Detects edit vs. new from `useParams()` — if `:id` present, fetches existing proposal on mount.
+       - Form fields: Title (required), Client dropdown (required, lists active clients), Introduction (textarea), Deliverables (textarea), Terms (textarea), Expiry Date (date input).
+       - Line items table: each row has Description, Quantity (number), Unit Price (number), Subtotal (auto-calculated = qty × price, read-only). Add Row button, Delete Row button per row. Total displayed below table.
+       - Two action buttons: "Save as Draft" (sets status='Draft', or keeps existing status for edits) and "Publish" (sets status='Sent').
+       - If proposal status is not 'Draft' (i.e. already Sent/Accepted/etc.), entire form is read-only with a banner: "This proposal has been published and cannot be edited." — show Edit button only on ProposalDetailPage, not here.
+       - On save, insert or update `agency_proposals`. Items stored as JSONB array. Navigate to `/proposals/:id` after successful save.
+       - `portal_token` is generated by the database default on INSERT; never set from frontend.
+       Files: `src/pages/ProposalEditorPage.tsx`
+       Verify: `npm run build` — exits 0.
+
+- [ ] 12. **Create ProposalDetailPage**
+       Create `src/pages/ProposalDetailPage.tsx`.
+       Features:
+       - Route: `/proposals/:id`. Fetches proposal with `select('*, agency_clients(name, company, email)')` and separately fetches associated responses and contract.
+       - Display: title, client name/company, status badge, items table, total, deliverables, terms, expiry.
+       - Portal link section: shows full URL `${window.location.origin}/portal/${proposal.portal_token}` with a "Copy Link" button (uses `navigator.clipboard.writeText`).
+       - Client responses: if `agency_proposal_responses` row exists, show action badge, comment, and timestamp.
+       - "Generate Contract" button: visible only when `status === 'Accepted'` AND no contract exists yet. Calls `supabase.from('agency_contracts').insert(...)` — snapshots all fields from the proposal + client at generation time into the `content` JSONB column. Navigates to `/contracts/:id` on success.
+       - "Edit" button: visible only when `status === 'Draft'`. Navigates to `/proposals/:id/edit`.
+       - Back link to `/proposals`.
+       Files: `src/pages/ProposalDetailPage.tsx`
+       Verify: `npm run build` — exits 0.
+
+- [ ] 13. **Create ContractPage**
+       Create `src/pages/ContractPage.tsx`.
+       Features:
+       - Route: `/contracts/:id`. Fetches `agency_contracts` row by id. Content comes from the `content` JSONB column (type `ContractContent`).
+       - Display: Connect Digitals logo/wordmark at top, contract header section (client name, company, email, issue date), services table (items from `content.items`), total amount, deliverables, terms.
+       - "Print / Download" button: calls `window.print()`. Button has `no-print` class so it disappears in print. Sidebar and Header are hidden in print via `no-print` class (apply `no-print` class to `<Sidebar>` and `<Header>` elements in Layout — see note below).
+       - Note on `no-print` in Layout: the `.no-print` CSS class from Step 9 handles hiding. ContractPage itself applies `no-print` to its own buttons. The Sidebar and Header already receive the class because they are rendered by Layout — add `className="no-print"` to the `<Sidebar>` wrapper div and `<Header>` element in `Layout.tsx`. This is the cleanest approach: layout adds `no-print` once, every page benefits.
+       Files: `src/pages/ContractPage.tsx`, `src/components/Layout.tsx` (add `no-print` to sidebar wrapper and header)
+       Verify: `npm run build` — exits 0.
+
+- [ ] 14. **Create ClientPortalPage**
+       Create `src/pages/ClientPortalPage.tsx`.
+       Features:
+       - Route: `/portal/:token`. Fully public — no auth check, no ProtectedRoute.
+       - On mount, calls `supabase.rpc('get_portal_data', { p_token: token })`. If result is null or error, renders graceful "Invalid or expired link" message with Connect Digitals branding.
+       - Displays proposal details: title, client name, intro, items table (read-only), total in ETB, deliverables, terms, expiry.
+       - Action section (shown only if proposal status is 'Sent'): three buttons — Accept, Request Changes, Reject — plus a comment textarea. On submit, calls `supabase.rpc('submit_proposal_response', { p_token: token, p_action: action, p_comment: comment })`. On success, reloads portal data (re-fetches) and shows confirmation message. Disables buttons while submitting.
+       - If response already exists, shows the existing response (action + comment + date) and hides the action buttons.
+       - Tabs (if data available): Proposal (default) | Contract (if `contract` in data) | Project (if `project` in data).
+       - No admin chrome: no Sidebar, no Header, no ProtectedRoute. Page has its own full-page layout with Connect Digitals wordmark at top (gold on navy background), cream body.
+       - Handles invalid token, expired proposal, and network errors gracefully.
+       Files: `src/pages/ClientPortalPage.tsx`
+       Verify: `npm run build` — exits 0.
+
+- [ ] 15. **Update Dashboard — 5th stat card**
+       In `src/pages/DashboardPage.tsx`:
+       - Add `FileText` to the lucide-react import.
+       - Add `awaitingResponse: number` to the `Stats` interface.
+       - Add a 5th parallel Supabase count query: `countProposals('Sent')` — counts `agency_proposals` where `status = 'Sent'`.
+       - Add a 5th stat card to `statCards` array: label `'Awaiting Response'`, value `stats?.awaitingResponse ?? 0`, icon `<FileText size={22} className="text-navy" />`, accent `border-navy`.
+       - Update the stat cards grid div from `lg:grid-cols-4` to `lg:grid-cols-5`. Update the skeleton loader from `length: 4` to `length: 5`.
+       Files: `src/pages/DashboardPage.tsx`
+       Verify: `npm run build` — exits 0.
+
+- [ ] 16. **Update App.tsx routing**
+       Add all Phase 2 routes to `src/App.tsx`:
+       ```
+       // Inside ProtectedRoute > Layout:
+       <Route path="proposals" element={<ProposalsPage />} />
+       <Route path="proposals/new" element={<ProposalEditorPage />} />
+       <Route path="proposals/:id" element={<ProposalDetailPage />} />
+       <Route path="proposals/:id/edit" element={<ProposalEditorPage />} />
+       <Route path="contracts/:id" element={<ContractPage />} />
+
+       // Outside ProtectedRoute (public):
+       <Route path="/portal/:token" element={<ClientPortalPage />} />
+       ```
+       Add all required imports.
+       Files: `src/App.tsx`
+       Verify: `npm run build` — exits 0 with no missing-module errors.
+
+- [ ] 17. **Final production build verification**
+       Run `npm run build` from `agency-ams/`. Confirm exit 0, no TypeScript errors, dist/ produced. Record the output in the FEAT findings.
+       Files: none (verification only)
+       Verify: `npm run build` exits 0.
+
+---
+
+## Risk notes
+
+1. **`noUnusedLocals` / `noUnusedParameters`** — TypeScript strict mode is on. Every imported type, variable, and parameter in new files must be used. Watch especially in ProposalEditorPage (complex form state) and ContractPage (JSONB casting).
+
+2. **Supabase anon key for portal** — The portal page uses the same `supabase` singleton (anon key). The security-definer RPCs are the only way the portal reads or writes data; no direct table access from `anon` role is permitted. This is correct and safe.
+
+3. **`portal_token` uniqueness** — Generated as `encode(gen_random_bytes(32),'hex')` — 64 hex chars = 256 bits of entropy. Supabase's `gen_random_bytes` uses a CSPRNG. Unguessable in practice.
+
+4. **One response per proposal** — The UNIQUE constraint on `proposal_id` in `agency_proposal_responses` enforces this at the database level, not just at the RPC level. Belt-and-suspenders.
+
+5. **Contract generation is idempotent-safe** — The UNIQUE constraint on `proposal_id` in `agency_contracts` prevents duplicate contracts at the DB layer. The frontend also checks for existence before showing the Generate button.
+
+6. **Print CSS scope** — `.no-print { display: none !important }` hides sidebar, header, and buttons during `window.print()`. Layout.tsx adds `no-print` class to the sidebar `<aside>` and `<header>` elements so all admin pages automatically suppress chrome on print, not just ContractPage.
+
+7. **`items` JSONB default** — `ProposalItem.id` is a client-generated UUID (use `crypto.randomUUID()` in ProposalEditorPage) since JSONB array items have no DB-managed identity. This is correct; the field is for display/ordering only.
+
+8. **Admin UUID** — All RLS policies use `9705a671-4d69-49bb-b5f9-7f69cad4f0f8`. Migration 001 and 002 used the older UUID `8662a535-fa9b-4e26-8c5d-193992607121`. Phase 2 migrations must use the confirmed Phase 2 admin UUID. Do NOT change Phase 1 migrations.

@@ -73,7 +73,7 @@ export default function ClientModal({ isOpen, onClose, client, onSaved }: Client
     try {
       if (client?.id) {
         const { data, error: sbError } = await supabase
-          .from('clients')
+          .from('agency_clients')
           .update(payload)
           .eq('id', client.id)
           .select()
@@ -83,7 +83,7 @@ export default function ClientModal({ isOpen, onClose, client, onSaved }: Client
         onSaved(data as Client);
       } else {
         const { data, error: sbError } = await supabase
-          .from('clients')
+          .from('agency_clients')
           .insert(payload)
           .select()
           .single();

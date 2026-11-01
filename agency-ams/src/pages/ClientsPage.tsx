@@ -19,7 +19,7 @@ export default function ClientsPage() {
     async function fetchClients() {
       try {
         const { data, error: sbError } = await supabase
-          .from('clients')
+          .from('agency_clients')
           .select('*')
           .eq('is_archived', false)
           .order('name');
@@ -70,7 +70,7 @@ export default function ClientsPage() {
     }
     try {
       const { error: sbError } = await supabase
-        .from('clients')
+        .from('agency_clients')
         .update({ is_archived: true })
         .eq('id', id);
 
