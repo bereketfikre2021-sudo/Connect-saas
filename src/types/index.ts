@@ -251,3 +251,59 @@ export interface AgencyFile {
   agency_projects?: { title: string } | null;
   agency_clients?: { name: string } | null;
 }
+
+// ── Quotations ────────────────────────────────────────────────────────────────
+
+export type QuotationStatus = 'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Expired';
+export type QuotationResponseAction = 'Accepted' | 'Rejected' | 'Changes Requested';
+
+export interface QuotationItem {
+  id: string;
+  quotation_id: string;
+  service_name: string;
+  description: string | null;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  line_total: number;
+  sort_order: number;
+}
+
+export interface Quotation {
+  id: string;
+  client_id: string;
+  quotation_number: string;
+  title: string;
+  status: QuotationStatus;
+  issue_date: string;
+  validity_date: string | null;
+  estimated_delivery: string | null;
+  currency: string;
+  discount_type: 'fixed' | 'percentage' | null;
+  discount_value: number;
+  subtotal: number;
+  discount_amount: number;
+  total: number;
+  scope: string | null;
+  deliverables: string | null;
+  timeline: string | null;
+  terms: string | null;
+  payment_terms: string | null;
+  notes: string | null;
+  access_token: string;
+  original_quotation_id: string | null;
+  converted_proposal_id: string | null;
+  converted_project_id: string | null;
+  created_at: string;
+  updated_at: string;
+  agency_clients?: { name: string; company: string; email: string } | null;
+  items?: QuotationItem[];
+}
+
+export interface QuotationResponse {
+  id: string;
+  quotation_id: string;
+  action: QuotationResponseAction;
+  comment: string | null;
+  responded_at: string;
+}

@@ -21,8 +21,11 @@ const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/clients': 'Clients',
   '/projects': 'Projects',
+// Dynamic project detail title handled by the page itself
   '/proposals': 'Proposals',
   '/proposals/new': 'New Proposal',
+  '/quotations': 'Quotations',
+  '/quotations/new': 'New Quotation',
   '/invoices': 'Invoices',
   '/invoices/new': 'New Invoice',
   '/payments': 'Payments',

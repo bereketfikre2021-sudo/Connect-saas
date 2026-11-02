@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Copy, ExternalLink, FileText, Loader2, Pencil } from 'lucide-react';
+import { Copy, ExternalLink, FileText, Loader2, Pencil, Receipt } from 'lucide-react';
 import { DocumentHeader, DocumentFooter, DocumentSection } from '../components/DocumentBranding';
 import { supabase } from '../lib/supabase';
 import StatusBadge from '../components/StatusBadge';
@@ -374,6 +374,32 @@ export default function ProposalDetailPage() {
           >
             <FileText size={14} />
             View Contract
+          </button>
+        )}
+
+        {/* Create invoice from accepted proposal */}
+        {proposal.status === 'Accepted' && (
+          <button
+            onClick={() => {
+              // Pass proposal data as URL state so InvoiceEditorPage can pre-fill
+              navigate('/invoices/new', {
+                state: {
+                  prefill: {
+                    client_id: proposal.client_id,
+                    title: proposal.title,
+                    items: proposal.items.map((item) => ({
+                      description: item.description,
+                      quantity: item.quantity,
+                      unit_price: item.unit_price,
+                    })),
+                  },
+                },
+              });
+            }}
+            className="flex items-center gap-2 px-4 py-2 border border-gold text-dark rounded-lg text-sm font-medium hover:bg-gold/10 transition-colors"
+          >
+            <Receipt size={14} />
+            Create Invoice
           </button>
         )}
       </div>

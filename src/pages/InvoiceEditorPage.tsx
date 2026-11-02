@@ -1,5 +1,5 @@
 import { useEffect, useState, FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Client, Project, Invoice, InvoiceItem } from '../types';
@@ -35,6 +35,8 @@ const etbFormatter = new Intl.NumberFormat('en-ET', {
 export default function InvoiceEditorPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const prefill = (location.state as { prefill?: { client_id: string; title: string; items: Array<{ description: string; quantity: number; unit_price: number }> } } | null)?.prefill;
 
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -43,14 +45,35 @@ export default function InvoiceEditorPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState<FormState>({
-    title: '',
-    client_id: '',
-    project_id: '',
-    issue_date: new Date().toISOString().split('T')[0],
-    due_date: '',
-    notes: '',
-    items: [blankItem()],
+  const [form, setForm] = useState<FormState>(() => {
+    if (prefill) {
+      return {
+        title: prefill.title,
+        client_id: prefill.client_id,
+        project_id: '',
+        issue_date: new Date().toISOString().split('T')[0],
+        due_date: '',
+        notes: '',
+        items: prefill.items.map((item, idx) => ({
+          id: crypto.randomUUID(),
+          invoice_id: '',
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          subtotal: item.quantity * item.unit_price,
+          sort_order: idx,
+        })),
+      };
+    }
+    return {
+      title: '',
+      client_id: '',
+      project_id: '',
+      issue_date: new Date().toISOString().split('T')[0],
+      due_date: '',
+      notes: '',
+      items: [blankItem()],
+    };
   });
 
   useEffect(() => {

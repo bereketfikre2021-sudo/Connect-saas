@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Pencil, FolderPlus, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ProjectModal from '../components/ProjectModal';
@@ -19,6 +20,7 @@ const STATUS_FILTERS: Array<'All' | ProjectStatus> = [
 ];
 
 export default function ProjectsPage() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,7 +171,7 @@ export default function ProjectsPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={row.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate(`/projects/${row.id}`)}>
                     <td className="px-5 py-3 font-medium text-dark">{row.title}</td>
                     <td className="px-5 py-3 text-gray-600">{row.agency_clients?.name ?? '—'}</td>
                     <td className="px-5 py-3 text-gray-600">{row.service || '—'}</td>
@@ -187,9 +189,9 @@ export default function ProjectsPage() {
                     </td>
                     <td className="px-5 py-3 text-gray-600">
                       {row.budget != null
-                        ? new Intl.NumberFormat('en-US', {
+                        ? new Intl.NumberFormat('en-ET', {
                             style: 'currency',
-                            currency: 'USD',
+                            currency: 'ETB',
                             maximumFractionDigits: 0,
                           }).format(row.budget)
                         : '—'}

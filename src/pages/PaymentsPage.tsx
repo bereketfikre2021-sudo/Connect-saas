@@ -16,7 +16,12 @@ function formatDate(d: string | null | undefined) {
 }
 
 interface SubmissionRow extends PaymentSubmission {
-  agency_invoices: { invoice_number: string; agency_clients: { name: string } | null } | null;
+  agency_invoices: {
+    invoice_number: string;
+    total_amount: number;
+    paid_amount: number;
+    agency_clients: { name: string } | null;
+  } | null;
 }
 
 interface PaymentRow extends Payment {
@@ -37,7 +42,7 @@ export default function PaymentsPage() {
       const [subRes, payRes] = await Promise.all([
         supabase
           .from('agency_payment_submissions')
-          .select('*, agency_invoices(invoice_number, agency_clients(name))')
+          .select('*, agency_invoices(invoice_number, total_amount, paid_amount, agency_clients(name))')
           .eq('status', 'Pending')
           .order('created_at', { ascending: false }),
         supabase
@@ -172,8 +177,22 @@ export default function PaymentsPage() {
                           <p className="text-dark">{sub.agency_invoices?.agency_clients?.name ?? '—'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-400 uppercase font-medium">Amount</p>
+                          <p className="text-xs text-gray-400 uppercase font-medium">Submitted Amount</p>
                           <p className="text-dark font-bold">{etbFormatter.format(sub.amount)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 uppercase font-medium">Invoice Total</p>
+                          <p className="text-dark">{etbFormatter.format(sub.agency_invoices?.total_amount ?? 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 uppercase font-medium">Already Paid</p>
+                          <p className="text-green-600">{etbFormatter.format(sub.agency_invoices?.paid_amount ?? 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 uppercase font-medium">Remaining Balance</p>
+                          <p className="font-bold text-brand_red">
+                            {etbFormatter.format((sub.agency_invoices?.total_amount ?? 0) - (sub.agency_invoices?.paid_amount ?? 0))}
+                          </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-400 uppercase font-medium">Payment Method</p>

@@ -1,4 +1,5 @@
 import { Menu } from 'lucide-react';
+import GlobalSearch from './GlobalSearch';
 
 interface HeaderProps {
   title: string;
@@ -7,15 +8,21 @@ interface HeaderProps {
 
 export default function Header({ title, onMenuToggle }: HeaderProps) {
   return (
-    <header className="md:hidden flex items-center gap-4 h-14 px-4 bg-navy text-cream shrink-0 border-b border-white/10">
+    <header className="flex items-center gap-4 h-14 px-4 bg-navy text-cream shrink-0 border-b border-white/10">
+      {/* Mobile menu button */}
       <button
         onClick={onMenuToggle}
-        className="text-cream hover:text-gold transition-colors"
+        className="md:hidden text-cream hover:text-gold transition-colors"
         aria-label="Open menu"
       >
         <Menu size={22} />
       </button>
-      <h1 className="text-base font-semibold">{title}</h1>
+
+      {/* Page title */}
+      <h1 className="text-base font-semibold flex-1">{title}</h1>
+
+      {/* Global search */}
+      <GlobalSearch />
     </header>
   );
 }
