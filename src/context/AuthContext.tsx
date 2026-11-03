@@ -4,20 +4,14 @@ import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
-  /** True until BOTH session AND is_admin() RPC have resolved. */
   loading: boolean;
   isAdmin: boolean;
-  /** True when VITE_SSO_PROVIDER is configured. */
-  ssoEnabled: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithSSO: (returnTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const SSO_PROVIDER = import.meta.env.VITE_SSO_PROVIDER as string | undefined;
-const SSO_ENABLED = !!SSO_PROVIDER;
 
 export const SSO_RETURN_KEY = 'sso_return_to';
 
@@ -104,32 +98,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signInWithSSO(returnTo = '/'): Promise<void> {
-    if (!SSO_PROVIDER) {
-      throw new Error('SSO provider is not configured (VITE_SSO_PROVIDER).');
-    }
     sessionStorage.setItem(SSO_RETURN_KEY, returnTo);
-    const { error, data } = await supabase.auth.signInWithOAuth({
-      provider: SSO_PROVIDER as `custom:${string}`,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'custom:central-admin',
       options: {
-        redirectTo: window.location.origin + '/auth/callback',
-        skipBrowserRedirect: true,   // capture URL before redirect for diagnostics
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
-    console.log('[AuthContext] signInWithOAuth provider:', SSO_PROVIDER);
-    console.log('[AuthContext] signInWithOAuth url:', data?.url ?? '(null — provider not found or not enabled)');
     if (error) {
       console.error('[AuthContext] signInWithOAuth error:', error.message);
       throw error;
     }
-    if (!data?.url) {
-      throw new Error(
-        `SSO provider "${SSO_PROVIDER}" returned no authorization URL. ` +
-        `Check that the provider is enabled in the Supabase dashboard ` +
-        `under Authentication → Providers, and that the identifier matches exactly.`
-      );
-    }
-    // Now do the redirect manually so we could log the URL first.
-    window.location.href = data.url;
   }
 
   async function signOut(): Promise<void> {
@@ -139,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, isAdmin, ssoEnabled: SSO_ENABLED, signIn, signInWithSSO, signOut }}
+      value={{ user, loading, isAdmin, signIn, signInWithSSO, signOut }}
     >
       {children}
     </AuthContext.Provider>

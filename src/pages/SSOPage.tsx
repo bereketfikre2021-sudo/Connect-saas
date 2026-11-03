@@ -2,12 +2,11 @@
  * SSOPage — /sso
  *
  * Dedicated SSO entry point for the hub card link.
- * On mount it immediately calls signInWithSSO() and redirects the browser
- * to the central-admin OIDC provider. Shows a spinner while this happens.
+ * Immediately calls signInWithSSO() which invokes:
+ *   supabase.auth.signInWithOAuth({ provider: 'custom:central-admin', ... })
+ * and redirects to /auth/callback after the OAuth exchange.
  *
- * If the user already has a valid admin session they are sent straight to
- * the dashboard without touching the OAuth flow.
- *
+ * Already-authenticated admins are sent straight to the dashboard.
  * /login (email+password) is completely unaffected.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -16,23 +15,21 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function SSOPage() {
-  const { user, isAdmin, loading, signInWithSSO, ssoEnabled } = useAuth();
+  const { user, isAdmin, loading, signInWithSSO } = useAuth();
   const navigate = useNavigate();
   const initiated = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Once the auth state has settled, either redirect an already-authenticated
-  // admin to the dashboard or kick off the OAuth flow.
   useEffect(() => {
     if (loading) return;
 
-    // Already authenticated and authorised — go straight to the dashboard.
+    // Already an authenticated admin — go straight to the dashboard.
     if (user && isAdmin) {
       navigate('/', { replace: true });
       return;
     }
 
-    // Authenticated but not an admin — show unauthorized.
+    // Authenticated but not an admin.
     if (user && !isAdmin) {
       navigate('/unauthorized', { replace: true });
       return;
@@ -41,25 +38,15 @@ export default function SSOPage() {
     // No session — initiate SSO exactly once.
     if (!initiated.current) {
       initiated.current = true;
-
-      if (!ssoEnabled) {
+      signInWithSSO('/').catch((err: unknown) => {
         setError(
-          'SSO is not configured (VITE_SSO_PROVIDER is not set). ' +
-          'Use the email/password login instead.',
+          err instanceof Error
+            ? err.message
+            : 'SSO initiation failed. Please try again.',
         );
-        return;
-      }
-
-      signInWithSSO('/')
-        .catch((err: unknown) => {
-          setError(
-            err instanceof Error
-              ? err.message
-              : 'SSO initiation failed. Please try again.',
-          );
-        });
+      });
     }
-  }, [loading, user, isAdmin, navigate, signInWithSSO, ssoEnabled]);
+  }, [loading, user, isAdmin, navigate, signInWithSSO]);
 
   if (error) {
     return (
