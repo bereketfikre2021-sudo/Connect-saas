@@ -1,19 +1,17 @@
 /**
- * AuthCallbackPage
+ * AuthCallbackPage — /auth/callback
  *
- * Landing page for the Supabase OAuth callback (`/auth/callback`).
+ * Supabase redirects here after the OAuth exchange.
+ * supabase-js (detectSessionInUrl:true) exchanges the PKCE code automatically
+ * during client initialisation and fires onAuthStateChange(SIGNED_IN).
+ * AuthContext.loading stays true until both the session AND is_admin() RPC
+ * have resolved. This page just waits for that, then navigates.
  *
- * supabase-js (detectSessionInUrl: true, the default) automatically exchanges
- * the code/token in the URL for a session as soon as the client is created.
- * By the time this component mounts, AuthContext.getSession() has already
- * resolved or onAuthStateChange has fired, so `loading` will be true → false
- * → navigate happens naturally.
- *
- * This page therefore only needs to:
- *   1. Show a spinner so the user sees something while the RPC resolves.
- *   2. Once loading is done, send the user to the stored destination.
+ * IMPORTANT: sessionStorage may be read on a first loading=false that has no
+ * user yet (getSession racing against onAuthStateChange). We therefore do NOT
+ * clear the key until we have a definitive answer (user !== null).
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SSO_RETURN_KEY } from '../context/AuthContext';
@@ -21,25 +19,36 @@ import { SSO_RETURN_KEY } from '../context/AuthContext';
 export default function AuthCallbackPage() {
   const { loading, user, isAdmin } = useAuth();
   const navigate = useNavigate();
+  // Track whether we have already committed to a navigation so we don't
+  // fire twice if loading flips multiple times.
+  const navigated = useRef(false);
 
   useEffect(() => {
-    if (loading) return; // still resolving — wait
+    if (loading) return;          // still resolving — wait
+    if (navigated.current) return; // already navigated
 
-    const returnTo = sessionStorage.getItem(SSO_RETURN_KEY) ?? '/';
-    sessionStorage.removeItem(SSO_RETURN_KEY);
-
+    // If user is still null after loading settled, the session exchange failed
+    // or hasn't fired yet. Wait one more tick — onAuthStateChange(SIGNED_IN)
+    // resets loading to true, so if we get here with user=null we genuinely
+    // have no session.
     if (!user) {
-      // Session exchange failed — go to login so the user can try again.
+      console.warn('[AuthCallback] loading=false but no user — redirecting to /login');
+      navigated.current = true;
       navigate('/login', { replace: true });
       return;
     }
 
+    const returnTo = sessionStorage.getItem(SSO_RETURN_KEY) ?? '/';
+    sessionStorage.removeItem(SSO_RETURN_KEY);
+    navigated.current = true;
+
     if (!isAdmin) {
+      console.warn('[AuthCallback] user authenticated but not admin — /unauthorized');
       navigate('/unauthorized', { replace: true });
       return;
     }
 
-    // Successful admin SSO — go to the original destination.
+    console.log('[AuthCallback] admin confirmed — navigating to', returnTo);
     navigate(returnTo, { replace: true });
   }, [loading, user, isAdmin, navigate]);
 

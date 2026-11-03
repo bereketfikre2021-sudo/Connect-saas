@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -10,10 +10,6 @@ interface AuthContextType {
   /** True when VITE_SSO_PROVIDER is configured. */
   ssoEnabled: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  /**
-   * Initiates the OAuth redirect.
-   * @param returnTo  Path to land on after the callback (default: '/').
-   */
   signInWithSSO: (returnTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -23,9 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SSO_PROVIDER = import.meta.env.VITE_SSO_PROVIDER as string | undefined;
 const SSO_ENABLED = !!SSO_PROVIDER;
 
-// Key used to stash the post-callback destination in sessionStorage.
-// SessionStorage survives the OAuth redirect but is cleared on tab close.
-const SSO_RETURN_KEY = 'sso_return_to';
+export const SSO_RETURN_KEY = 'sso_return_to';
 
 async function fetchIsAdmin(): Promise<boolean> {
   try {
@@ -34,6 +28,7 @@ async function fetchIsAdmin(): Promise<boolean> {
       console.error('[AuthContext] is_admin RPC error:', error.message);
       return false;
     }
+    console.log('[AuthContext] is_admin RPC result:', data);
     return data === true;
   } catch (e) {
     console.error('[AuthContext] is_admin RPC threw:', e);
@@ -46,36 +41,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // authStateChangeFired tracks whether onAuthStateChange has already fired
+  // at least once. If it has, we do NOT let getSession() commit loading=false
+  // — we let onAuthStateChange win, preventing the null-user flash.
+  const authStateChangeFired = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
     let generation = 0;
 
-    async function resolveSession(sessionUser: User | null, gen: number) {
+    async function resolveSession(
+      sessionUser: User | null,
+      gen: number,
+      source: 'getSession' | 'authStateChange',
+    ) {
+      // If this is a getSession result but authStateChange has already fired
+      // a newer event, skip — authStateChange's result will be authoritative.
+      if (source === 'getSession' && authStateChangeFired.current) {
+        console.log('[AuthContext] getSession skipped — authStateChange already fired');
+        return;
+      }
+
       const admin = sessionUser ? await fetchIsAdmin() : false;
-      if (cancelled || gen !== generation) return;
+
+      if (cancelled || gen !== generation) return; // stale
+
+      console.log('[AuthContext] resolveSession commit', { source, uid: sessionUser?.id, admin });
       setUser(sessionUser);
       setIsAdmin(admin);
       setLoading(false);
     }
 
-    // getSession() resolves the OAuth callback token from the URL on first load
-    // because supabase-js detectSessionInUrl:true has already parsed it.
+    // 1. Initial session — also handles PKCE code exchange on the callback page.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
       generation++;
-      void resolveSession(session?.user ?? null, generation);
+      void resolveSession(session?.user ?? null, generation, 'getSession');
     });
 
+    // 2. Auth state changes (SIGNED_IN from OAuth, TOKEN_REFRESHED, SIGNED_OUT).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (cancelled) return;
+        authStateChangeFired.current = true;
         generation++;
         const gen = generation;
-        // Reset loading so AdminRoute spins rather than prematurely redirecting
-        // while the is_admin() RPC is in flight.
-        setLoading(true);
-        void resolveSession(session?.user ?? null, gen);
-      }
+        console.log('[AuthContext] onAuthStateChange', _event, 'uid:', session?.user?.id);
+        setLoading(true); // hold the spinner while RPC resolves
+        void resolveSession(session?.user ?? null, gen, 'authStateChange');
+      },
     );
 
     return () => {
@@ -93,16 +107,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!SSO_PROVIDER) {
       throw new Error('SSO provider is not configured (VITE_SSO_PROVIDER).');
     }
-    // Persist the destination so the callback page can navigate there.
     sessionStorage.setItem(SSO_RETURN_KEY, returnTo);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: SSO_PROVIDER as `custom:${string}`,
-      options: {
-        // Always land back at the app root; AuthCallbackPage handles the rest.
-        redirectTo: window.location.origin + '/auth/callback',
-      },
+      options: { redirectTo: window.location.origin + '/auth/callback' },
     });
-    if (error) throw error;
+    if (error) {
+      console.error('[AuthContext] signInWithOAuth error:', error.message);
+      throw error;
+    }
   }
 
   async function signOut(): Promise<void> {
@@ -126,6 +139,3 @@ export function useAuth(): AuthContextType {
   }
   return ctx;
 }
-
-/** The sessionStorage key used to persist the post-SSO destination. */
-export { SSO_RETURN_KEY };
