@@ -7,12 +7,11 @@ import { supabase } from '../lib/supabase';
 type Mode = 'login' | 'forgot';
 
 export default function LoginPage() {
-  const { signIn, signInWithSSO, ssoEnabled, user, isAdmin, loading: authLoading } = useAuth();
+  const { signIn, user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Once auth+admin check are both done, redirect an already-authenticated
-  // admin away from the login page. Do NOT redirect while still loading — that
-  // would race against isAdmin being resolved and cause a loop.
+  // Redirect an already-authenticated admin away from the login page.
+  // Wait for both session and isAdmin to resolve before redirecting.
   useEffect(() => {
     if (authLoading) return;
     if (user && isAdmin) {
@@ -27,7 +26,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
-  const [ssoLoading, setSsoLoading] = useState(false);
 
   async function handleLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,17 +59,6 @@ export default function LoginPage() {
       setError(err instanceof Error ? err.message : 'Failed to send reset email.');
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleSSO() {
-    setError('');
-    setSsoLoading(true);
-    try {
-      await signInWithSSO('/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'SSO sign-in failed. Please try again.');
-      setSsoLoading(false);
     }
   }
 
@@ -141,33 +128,12 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading || ssoLoading}
+                disabled={loading}
                 className="mt-6 w-full bg-brand_red text-white font-semibold py-2.5 rounded-lg hover:bg-brand_red/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 size={15} className="animate-spin" />}
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
-
-              {/* SSO button — rendered only when VITE_SSO_PROVIDER is configured */}
-              {ssoEnabled && (
-                <>
-                  <div className="flex items-center gap-3 my-4">
-                    <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-cream/30 text-xs">or</span>
-                    <div className="flex-1 h-px bg-white/10" />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleSSO}
-                    disabled={loading || ssoLoading}
-                    className="w-full bg-white/10 border border-white/20 text-cream font-semibold py-2.5 rounded-lg hover:bg-white/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {ssoLoading && <Loader2 size={15} className="animate-spin" />}
-                    {ssoLoading ? 'Redirecting…' : 'Sign in with Central Admin Portal'}
-                  </button>
-                </>
-              )}
 
               <div className="text-center mt-4">
                 <button
