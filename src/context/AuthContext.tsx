@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -35,56 +35,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // authStateChangeFired tracks whether onAuthStateChange has already fired
-  // at least once. If it has, we do NOT let getSession() commit loading=false
-  // — we let onAuthStateChange win, preventing the null-user flash.
-  const authStateChangeFired = useRef(false);
-
   useEffect(() => {
     let cancelled = false;
     let generation = 0;
 
-    async function resolveSession(
-      sessionUser: User | null,
-      gen: number,
-      source: 'getSession' | 'authStateChange',
-    ) {
-      // If this is a getSession result but authStateChange has already fired
-      // a newer event, skip — authStateChange's result will be authoritative.
-      if (source === 'getSession' && authStateChangeFired.current) {
-        console.log('[AuthContext] getSession skipped — authStateChange already fired');
-        return;
-      }
-
+    async function resolveSession(sessionUser: User | null, gen: number) {
       const admin = sessionUser ? await fetchIsAdmin() : false;
-
-      if (cancelled || gen !== generation) return; // stale
-
-      console.log('[AuthContext] resolveSession commit', { source, uid: sessionUser?.id, admin });
+      if (cancelled || gen !== generation) return;
+      console.log('[AuthContext] resolveSession commit', { uid: sessionUser?.id, admin });
       setUser(sessionUser);
       setIsAdmin(admin);
       setLoading(false);
     }
 
-    // 1. Initial session — also handles PKCE code exchange on the callback page.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (cancelled) return;
-      generation++;
-      void resolveSession(session?.user ?? null, generation, 'getSession');
-    });
-
-    // 2. Auth state changes (SIGNED_IN from OAuth, TOKEN_REFRESHED, SIGNED_OUT).
+    // onAuthStateChange fires INITIAL_SESSION synchronously during setup,
+    // then SIGNED_IN when an OAuth code is exchanged. We must handle both.
+    // We use a generation counter so whichever resolves last wins.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (cancelled) return;
-        authStateChangeFired.current = true;
         generation++;
         const gen = generation;
-        console.log('[AuthContext] onAuthStateChange', _event, 'uid:', session?.user?.id);
-        setLoading(true); // hold the spinner while RPC resolves
-        void resolveSession(session?.user ?? null, gen, 'authStateChange');
+        console.log('[AuthContext] onAuthStateChange', _event, 'uid:', session?.user?.id ?? 'none');
+        setLoading(true);
+        void resolveSession(session?.user ?? null, gen);
       },
     );
+
+    // getSession() is called AFTER subscribing so we don't miss any events.
+    // On the /auth/callback page supabase-js exchanges the PKCE code here
+    // and then fires SIGNED_IN via onAuthStateChange — we don't need to
+    // call getSession separately; the subscription above handles everything.
+    // We call it only as a fallback for the case where no auth event fires
+    // (e.g. a page reload with an existing localStorage session that doesn't
+    // trigger a new onAuthStateChange event beyond INITIAL_SESSION).
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      // Only use the getSession result if onAuthStateChange hasn't already
+      // committed a newer result (higher generation).
+      if (generation === 0) {
+        generation++;
+        void resolveSession(session?.user ?? null, generation);
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -117,9 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider
-      value={{ user, loading, isAdmin, signIn, signInWithSSO, signOut }}
-    >
+    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signInWithSSO, signOut }}>
       {children}
     </AuthContext.Provider>
   );
