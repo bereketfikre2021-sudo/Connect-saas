@@ -108,14 +108,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('SSO provider is not configured (VITE_SSO_PROVIDER).');
     }
     sessionStorage.setItem(SSO_RETURN_KEY, returnTo);
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error, data } = await supabase.auth.signInWithOAuth({
       provider: SSO_PROVIDER as `custom:${string}`,
-      options: { redirectTo: window.location.origin + '/auth/callback' },
+      options: {
+        redirectTo: window.location.origin + '/auth/callback',
+        skipBrowserRedirect: true,   // capture URL before redirect for diagnostics
+      },
     });
+    console.log('[AuthContext] signInWithOAuth provider:', SSO_PROVIDER);
+    console.log('[AuthContext] signInWithOAuth url:', data?.url ?? '(null — provider not found or not enabled)');
     if (error) {
       console.error('[AuthContext] signInWithOAuth error:', error.message);
       throw error;
     }
+    if (!data?.url) {
+      throw new Error(
+        `SSO provider "${SSO_PROVIDER}" returned no authorization URL. ` +
+        `Check that the provider is enabled in the Supabase dashboard ` +
+        `under Authentication → Providers, and that the identifier matches exactly.`
+      );
+    }
+    // Now do the redirect manually so we could log the URL first.
+    window.location.href = data.url;
   }
 
   async function signOut(): Promise<void> {
