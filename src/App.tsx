@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import SSOPage from './pages/SSOPage';
 
 // Lazy load all other pages — reduces initial bundle size
 const ClientsPage         = lazy(() => import('./pages/ClientsPage'));
@@ -48,6 +49,7 @@ export default function App() {
         <Routes>
           {/* Unprotected */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/sso" element={<SSOPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
