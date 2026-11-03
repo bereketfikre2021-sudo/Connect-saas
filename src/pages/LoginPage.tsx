@@ -6,19 +6,19 @@ import { supabase } from '../lib/supabase';
 
 type Mode = 'login' | 'forgot';
 
-// SSO is shown only when the provider name is configured in the environment.
-const ssoEnabled = !!import.meta.env.VITE_SSO_PROVIDER;
-
 export default function LoginPage() {
-  const { signIn, signInWithSSO, user, loading: authLoading } = useAuth();
+  const { signIn, signInWithSSO, ssoEnabled, user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect already-authenticated admin away from the login page
+  // Once auth+admin check are both done, redirect an already-authenticated
+  // admin away from the login page. Do NOT redirect while still loading — that
+  // would race against isAdmin being resolved and cause a loop.
   useEffect(() => {
-    if (!authLoading && user) {
+    if (authLoading) return;
+    if (user && isAdmin) {
       navigate('/', { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, isAdmin, authLoading, navigate]);
 
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -68,13 +68,11 @@ export default function LoginPage() {
     setError('');
     setSsoLoading(true);
     try {
-      // signInWithSSO triggers a redirect — control leaves the page if successful.
-      await signInWithSSO();
+      await signInWithSSO('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'SSO sign-in failed. Please try again.');
       setSsoLoading(false);
     }
-    // If we reach here the redirect didn't happen (error path); loading cleared above.
   }
 
   return (
