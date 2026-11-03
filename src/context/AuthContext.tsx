@@ -95,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'custom:central-admin',
       options: {
+        scopes: 'openid email',
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
