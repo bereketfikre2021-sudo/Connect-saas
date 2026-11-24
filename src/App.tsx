@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import AdminRoute from './components/AdminRoute';
 import Layout from './components/Layout';
+import PWAInstallBanner from './components/PWAInstallBanner';
 import { Loader2 } from 'lucide-react';
 
 // Eagerly load critical pages
@@ -86,6 +87,7 @@ export default function App() {
           </Route>
         </Routes>
       </AuthProvider>
+      <PWAInstallBanner />
     </BrowserRouter>
   );
 }

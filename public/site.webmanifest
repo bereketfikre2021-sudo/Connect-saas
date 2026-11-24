@@ -1,6 +1,6 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "Connect SaaS",
+  "short_name": "Connect SaaS",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
